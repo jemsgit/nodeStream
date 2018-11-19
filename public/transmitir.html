@@ -1,0 +1,77 @@
+<html>
+<head>
+  <title>tramsmitir</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+  <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <video src="" id="video" style="width:680px;height:320px;" autoplay="true"></video>
+  <!-- El canvas obtine las imagenes de la camara que se transmiten -->
+  <canvas style="display:none;" id="preview"></canvas>
+  <!-- para saber si la camara esta activa -->
+  <div id = "logger"></div>
+
+  <script type="text/javascript">
+    var canvas = document.getElementById("preview");
+    var context = canvas.getContext("2d");
+
+    canvas.width = 320;
+    canvas.height = 240;
+
+    context.width = canvas.width;
+    context.height = canvas.height;
+
+    var video = document.getElementById("video");
+    var mediaRecorder = null;
+    var socket = io();
+
+    function logger(msg)
+    {
+      $("#logger").text(msg);
+    }
+
+    function loadCam(stream)
+    {
+      video.src = window.URL.createObjectURL(stream);
+      console.log(stream);
+      var options = {
+      audioBitsPerSecond : 128000,
+      videoBitsPerSecond : 2500000,
+      mimeType : 'video/webm'
+    }
+      mediaRecorder = new MediaRecorder(stream, options);
+      mediaRecorder.start(1000);
+      mediaRecorder.ondataavailable = function(e) {
+        console.log(e)
+        socket.emit('stream', e.data);
+    };
+      logger('camara cargada correctamente [OK]');
+    }
+
+    function loadFail()
+    {
+      logger('Camara no encontrada, revise la camara');
+    }
+
+    function viewVideo(video,context)
+    {
+      context.drawImage(video,0,0,context.width, context.height);
+      //para trasmitir las imagenes como cadena,  webp es un formato parecido a png
+      var data = mediaRecorder.requestData();
+      socket.emit('stream', data);
+    }
+
+    $(function(){
+      navigator.getUserMedia= (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msgGetUserMedia);
+      if(navigator.getUserMedia)
+      {
+        navigator.getUserMedia({video : true, audio: true },loadCam,loadFail);
+      }
+      setInterval(function(){
+        viewVideo(video,context);
+      },2000);
+    });
+
+  </script>
+</body>
+</html>
