@@ -1,9 +1,11 @@
 
-var {Readable} = require('stream');
+var {Readable, Writable} = require('stream');
 var express = require("express");
+const EventEmitter = require('events');
 var app = new express ();
 var http = require("http").Server(app);
 var io = require("socket.io")(http);
+const myEE = new EventEmitter();
 
 var Log = require('log'),
     log = new Log('debug')
@@ -12,64 +14,62 @@ var port = process.env.PORT || 3000;
 
 app.use(express.static(__dirname + "/public"));
 
-var st;
+let st, wr;
 
-
-
-class VideoStream  extends Readable{
+class RVideoStream extends Readable {
   constructor(options) {
     super({
       ...options,
       objectMode: true
     })
-
-    this.socket = options.socket;
-    this.chunks = []
   }
-
-
-  getDataFn = async function() {
-    return new Promise((res, rej) => {
-      this.socket.on('stream',(data) => {
-        console.log('data')
-        console.log(data);
-        res(data);
-        this.push(data);
-      });
-    });
-  }
-
-  getData = getDataFn();
   
-  
-
   _read() {
-    let data = getData();
-    if(!data) {
-      set
-    }
+    console.log('read!!!!!')
+  }
+}
+
+class WVideoStream extends Writable {
+  constructor(readableStream) {
+    super();
+    this.readable = readableStream;
   }
 
-
+  _write(data, encoding, callback){
+    console.log('write')
+    this.readable.push(data);
+    callback()
+  }
 }
 
 
 app.get('/',function(req,res){
-  res.redirect('index.html'); //para archivos estaticos
+    res.redirect('index.html'); //para archivos estaticos
 });
 
 app.get('/video',function(req,res){
-  console.log(st)
-  if(st){
-    st.pipe(res);
-  } else {
-    res.sendStatus(404)
-  }
-  
+    if(st){
+      res.set('Content-Type', 'video/webm');
+      res.set("Connection", "keep-alive");
+      st.pipe(res);
+    } else {
+      res.sendStatus(404)
+    }
 });
 
 io.on('connection',function(socket){
-  st = new VideoStream({socket});
+  st = new RVideoStream();
+  wr = new WVideoStream(st);
+  socket.on('stream',(data) => {
+    console.log('data')
+    if(data){
+      if (!wr.write(data)) {
+        wr.once('drain', ()=>{});
+      } else {
+        process.nextTick(() => {});
+      }
+    }
+  });
 });
 
 http.listen(port,function(){

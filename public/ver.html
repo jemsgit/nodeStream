@@ -9,18 +9,12 @@
   <img id="play">
   <div id="logger"></div>
 
-  <video id="videoPlayer" controls>
-    <source src="http://localhost:3000/video" type="video/mp4">
+  <video id="videoPlayer" controls autoplay>
+    <source src="http://localhost:3000/video" type="video/webm" >
   </video>
 
   <script>
-    var socket = io();
-    socket.on('stream',function(image){
-      var img = document.getElementById("play");
-      img.src = image;
-      var log = document.getElementById("logger");
-      $("#logger").text(image);
-    });
+
   </script>
 </body>
 </html>
